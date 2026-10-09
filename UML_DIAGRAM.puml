@@ -1,0 +1,404 @@
+@startuml PowerCalc_Architecture
+' ============================================================
+' PowerCalc 2.0 - Complete UML Class Diagram
+' Software Architecture Design Project
+' ============================================================
+
+skinparam backgroundColor #1a1a2e
+skinparam classBackgroundColor #16213e
+skinparam classBorderColor #1f6aa5
+skinparam classArrowColor #4ecca3
+skinparam classFontColor #e0e0e0
+skinparam classHeaderBackgroundColor #0f3460
+skinparam stereotypeCBackgroundColor #1f6aa5
+skinparam stereotypeABackgroundColor #e94560
+skinparam packageBackgroundColor #12122a
+skinparam packageBorderColor #1f6aa5
+skinparam noteBorderColor #e94560
+skinparam noteBackgroundColor #1a0030
+skinparam noteFontColor #f0e0ff
+skinparam arrowThickness 1.5
+skinparam classAttributeIconSize 0
+
+' ============================================================
+' PACKAGE: ENGINE  (calculator .py)
+' ============================================================
+
+package "calculator .py  [ENGINE LAYER]" #12122a {
+
+  class Calculator {
+    + history : List[Tuple]
+    + memory  : float
+    + precision : int
+    --
+    + add(a, b) : Number
+    + subtract(a, b) : Number
+    + multiply(a, b) : Number
+    + divide(a, b) : Number
+    + floor_divide(a, b) : Number
+    + modulo(a, b) : Number
+    + power(base, exp) : Number
+    + absolute(a) : Number
+    + negate(a) : Number
+    + memory_store(value)
+    + memory_recall() : float
+    + memory_clear()
+    + memory_add(value)
+    + clear_history()
+    + show_history() : List[str]
+    # _record(expr, result) : Number
+  }
+  note right of Calculator
+    **Template Method Pattern**
+    _record() is the template —
+    every operation calls it to
+    log and return the result.
+  end note
+
+  class ScientificCalculator {
+    + sin(angle_rad) : float
+    + cos(angle_rad) : float
+    + tan(angle_rad) : float
+    + asin(x) : float
+    + acos(x) : float
+    + atan(x) : float
+    + sinh(x) : float
+    + cosh(x) : float
+    + tanh(x) : float
+    + log(x, base) : float
+    + log10(x) : float
+    + log2(x) : float
+    + exp(x) : float
+    + sqrt(x) : float
+    + cbrt(x) : float
+    + nth_root(x, n) : float
+    + factorial(n) : int
+    + permutation(n, r) : int
+    + combination(n, r) : int
+    + PI : float
+    + E  : float
+    + TAU : float
+    + PHI : float
+  }
+
+  class StatisticalCalculator {
+    + mean(data) : float
+    + median(data) : float
+    + mode(data) : float
+    + std_dev(data, population) : float
+    + variance(data, population) : float
+    + data_range(data) : float
+    + percentile(data, p) : float
+    + correlation(x, y) : float
+    + sum_data(data) : float
+    + product_data(data) : float
+    + geometric_mean(data) : float
+    + harmonic_mean(data) : float
+  }
+
+  class FinancialCalculator {
+    + simple_interest(P, r, t) : float
+    + compound_interest(P, r, n, t) : float
+    + present_value(FV, r, periods) : float
+    + future_value(PV, r, periods) : float
+    + loan_payment(P, r, years) : float
+    + roi(gain, cost) : float
+    + break_even(FC, price, VC) : float
+    + inflation_adjusted(A, i, y) : float
+  }
+
+  class MatrixCalculator {
+    + add(A, B) : Matrix
+    + subtract(A, B) : Matrix
+    + multiply(A, B) : Matrix
+    + scalar_multiply(A, k) : Matrix
+    + transpose(A) : Matrix
+    + determinant(A) : float
+    + identity(n) : Matrix
+    + trace(A) : float
+    + flatten(A) : List
+  }
+
+  class PowerCalc <<Singleton>> <<Facade>> {
+    - {static} _instance : PowerCalc
+    - _initialised : bool
+    + VERSION : str = "2.0.0"
+    + matrix : MatrixCalculator
+    --
+    + {static} __new__(cls) : PowerCalc
+    + evaluate(expression) : Number
+    + chain(start, *operations) : Number
+    + info() : str
+  }
+  note right of PowerCalc
+    **Singleton Pattern**
+    __new__() returns the same
+    instance on every call.
+
+    **Facade Pattern**
+    Single entry point to all
+    5 calculator subsystems.
+  end note
+
+  Calculator <|-- ScientificCalculator
+  ScientificCalculator <|-- StatisticalCalculator
+  StatisticalCalculator <|-- FinancialCalculator
+  FinancialCalculator <|-- PowerCalc
+  PowerCalc *-- MatrixCalculator : composes
+}
+
+' ============================================================
+' PACKAGE: DESIGN PATTERNS  (calculator_gui.py)
+' ============================================================
+
+package "calculator_gui.py  [PATTERN LAYER]" #0d0d1f {
+
+  ' ── COMMAND PATTERN ──────────────────────────────────────
+
+  class CalcCommand <<Command>> {
+    + label : str
+    + fn : Callable
+    + result : Any
+    + prev_value : str
+    --
+    + execute() : Any
+    + undo() : str
+  }
+  note top of CalcCommand
+    **Command Pattern**
+    Encapsulates a calculation.
+    execute() runs it.
+    undo() restores previous value.
+  end note
+
+  class CommandHistory <<Command>> {
+    - _stack : List[CalcCommand]
+    --
+    + push(cmd : CalcCommand)
+    + undo() : str
+    + clear()
+  }
+
+  CommandHistory o-- CalcCommand : manages stack of
+
+  ' ── OBSERVER PATTERN ─────────────────────────────────────
+
+  class HistorySubject <<Observer>> {
+    - _observers : List[Callable]
+    --
+    + subscribe(fn : Callable)
+    + notify(entry, expr, result)
+  }
+  note top of HistorySubject
+    **Observer Pattern**
+    Broadcasts calc results to
+    all subscribed UI components.
+  end note
+
+  ' ── STRATEGY PATTERN ─────────────────────────────────────
+
+  abstract class ThemeStrategy <<Strategy>> {
+    + {abstract} name : str
+    + {abstract} colours() : dict
+  }
+
+  class DarkBlueTheme {
+    + name = "Dark Blue"
+    + colours() : dict
+  }
+  class DarkGreenTheme {
+    + name = "Dark Green"
+    + colours() : dict
+  }
+  class MidnightPurpleTheme {
+    + name = "Midnight Purple"
+    + colours() : dict
+  }
+  class SlateTheme {
+    + name = "Slate"
+    + colours() : dict
+  }
+  class LightTheme {
+    + name = "Light"
+    + colours() : dict
+  }
+
+  ThemeStrategy <|-- DarkBlueTheme
+  ThemeStrategy <|-- DarkGreenTheme
+  ThemeStrategy <|-- MidnightPurpleTheme
+  ThemeStrategy <|-- SlateTheme
+  ThemeStrategy <|-- LightTheme
+
+  class ThemeContext <<Strategy>> {
+    - _current : ThemeStrategy
+    - {static} _strategies : dict
+    --
+    + set_strategy(name : str)
+    + c(key : str) : str
+    + name : str
+    + names : List[str]
+  }
+  note right of ThemeContext
+    **Strategy Pattern**
+    Holds active ThemeStrategy.
+    set_strategy() swaps at runtime.
+    c() provides uniform colour access.
+  end note
+
+  ThemeContext o-- ThemeStrategy : holds active
+
+  ' ── FACTORY METHOD PATTERN ───────────────────────────────
+
+  abstract class TabFactory <<FactoryMethod>> {
+    + {abstract} tab_name : str
+    + {abstract} create_tab(parent, app) : object
+  }
+  note top of TabFactory
+    **Factory Method Pattern**
+    CalculatorApp calls create_tab()
+    without knowing concrete classes.
+  end note
+
+  class StandardTabFactory {
+    + tab_name = "Standard"
+    + create_tab(parent, app) : StandardTab
+  }
+  class ScientificTabFactory {
+    + tab_name = "Scientific"
+    + create_tab(parent, app) : ScientificTab
+  }
+  class StatisticsTabFactory {
+    + tab_name = "Statistics"
+    + create_tab(parent, app) : StatisticsTab
+  }
+  class FinancialTabFactory {
+    + tab_name = "Financial"
+    + create_tab(parent, app) : FinancialTab
+  }
+  class MatrixTabFactory {
+    + tab_name = "Matrix"
+    + create_tab(parent, app) : MatrixTab
+  }
+
+  TabFactory <|-- StandardTabFactory
+  TabFactory <|-- ScientificTabFactory
+  TabFactory <|-- StatisticsTabFactory
+  TabFactory <|-- FinancialTabFactory
+  TabFactory <|-- MatrixTabFactory
+}
+
+' ============================================================
+' PACKAGE: GUI COMPONENTS  (calculator_gui.py)
+' ============================================================
+
+package "calculator_gui.py  [GUI LAYER]" #0a1a0a {
+
+  class CalculatorApp <<CTk>> {
+    - _history_visible : bool
+    - _history_entries : List[str]
+    - _tab_controllers : dict
+    --
+    + _build_layout()
+    + _build_toolbar()
+    + _build_display()
+    + _build_tabs()
+    + _build_eval_bar()
+    + _build_history_panel()
+    + _toggle_history()
+    + _switch_theme(name)
+    + _on_calc_display(e, x, r)
+    + _on_calc_history(e, x, r)
+    + _refresh_history_panel()
+    + _clear_history()
+    + _run_eval()
+    + set_display(expr, result)
+    + get_result() : str
+  }
+
+  class StandardTab {
+    - _expr : str
+    - _input : str
+    --
+    + _digit(d)
+    + _op(sym)
+    + _equals()
+    + _square()
+    + _sqrt()
+    + _undo()
+    + _ms() / _mr() / _mc() / _mplus()
+    + handle_key(event)
+  }
+
+  class ScientificTab {
+    - _angle : StringVar
+    - _inp : CTkEntry
+    --
+    + _calc(key)
+    + _power_n()
+    + _root_n()
+  }
+
+  class StatisticsTab {
+    - _data_e : CTkEntry
+    - _p_e : CTkEntry
+    - _cx / _cy : CTkEntry
+    --
+    + _run(op)
+    + _percentile()
+    + _corr()
+  }
+
+  class FinancialTab {
+    --
+    + _run(entries, cb)
+  }
+
+  class MatrixTab {
+    - _ea / _eb : List[List[CTkEntry]]
+    - _size : IntVar
+    --
+    + _rebuild()
+    + _op(op)
+    + _grid(parent, n)
+    + _read(entries) : Matrix
+    + _show(result, label)
+  }
+
+  CalculatorApp *-- StandardTab
+  CalculatorApp *-- ScientificTab
+  CalculatorApp *-- StatisticsTab
+  CalculatorApp *-- FinancialTab
+  CalculatorApp *-- MatrixTab
+
+  CalculatorApp ..> HistorySubject : subscribes to
+  CalculatorApp ..> ThemeContext   : uses (Strategy)
+  CalculatorApp ..> TabFactory     : iterates (Factory)
+  CalculatorApp ..> CommandHistory : uses (Command)
+
+  StandardTab ..> CalcCommand     : creates
+  StandardTab ..> CommandHistory  : pushes to
+  StandardTab ..> HistorySubject  : notifies
+  ScientificTab ..> HistorySubject : notifies
+  StatisticsTab ..> HistorySubject : notifies
+  FinancialTab  ..> HistorySubject : notifies
+  MatrixTab     ..> HistorySubject : notifies
+}
+
+' ============================================================
+' CROSS-LAYER DEPENDENCIES
+' ============================================================
+
+CalculatorApp ..> PowerCalc : uses (Singleton)
+StandardTab   ..> PowerCalc : calls engine
+ScientificTab ..> PowerCalc : calls engine
+StatisticsTab ..> PowerCalc : calls engine
+FinancialTab  ..> PowerCalc : calls engine
+MatrixTab     ..> PowerCalc : calls engine
+
+StandardTabFactory  ..> StandardTab  : creates
+ScientificTabFactory ..> ScientificTab : creates
+StatisticsTabFactory ..> StatisticsTab : creates
+FinancialTabFactory  ..> FinancialTab  : creates
+MatrixTabFactory     ..> MatrixTab     : creates
+
+@enduml
